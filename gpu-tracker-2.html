@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Watch — Price Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;--bg4:#1c1c27;
+  --border:rgba(255,255,255,0.07);--border-b:rgba(255,255,255,0.14);--border-c:rgba(255,255,255,0.22);
+  --text:#e8e8f0;--muted:#6b6b80;--muted2:#4a4a5a;
+  --accent:#00e5a0;--accent-d:rgba(0,229,160,0.12);--accent-g:rgba(0,229,160,0.22);
+  --red:#ff4f6b;--red-d:rgba(255,79,107,0.12);
+  --amber:#ffb547;--amber-d:rgba(255,181,71,0.13);
+  --blue:#4f9eff;--blue-d:rgba(79,158,255,0.12);
+  --amazon:#ff9900;--newegg:#ffaa00;--bestbuy:#1ed760;
+  --mono:'DM Mono',monospace;--sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.065) 2px,rgba(0,0,0,0.065) 4px);pointer-events:none;z-index:9999;}
+
+/* HEADER */
+.header{padding:2.5rem 2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem;position:relative;}
+.header::after{content:'';position:absolute;bottom:-1px;left:0;width:120px;height:1px;background:var(--accent);box-shadow:0 0 14px var(--accent-g);}
+.logo-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
+.logo h1{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+.logo h1 span{color:var(--accent);}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.hbtn{font-family:var(--mono);font-size:11px;padding:7px 14px;background:transparent;border:1px solid var(--border-b);color:var(--muted);border-radius:4px;cursor:pointer;letter-spacing:.05em;transition:all .2s;white-space:nowrap;}
+.hbtn:hover{border-color:var(--accent);color:var(--accent);}
+.hbtn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-d);}
+.last-upd{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* MAIN */
+.main{padding:2rem;max-width:1200px;margin:0 auto;}
+
+/* INFO */
+.info-banner{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:6px;padding:1rem 1.25rem;margin-bottom:2rem;display:flex;gap:12px;}
+.info-icon{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.08em;white-space:nowrap;padding-top:2px;}
+.info-text{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.75;}
+.info-text strong{color:var(--text);font-weight:500;}
+
+/* GPU GRID */
+.gpu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2rem;}
+.gpu-card{background:var(--bg2);padding:1.5rem;position:relative;transition:background .2s;}
+.gpu-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent;transition:background .3s;}
+.gpu-card.is-deal{background:#0b1912;}
+.gpu-card.is-deal::before{background:var(--accent);box-shadow:0 0 14px var(--accent-g);}
+.gpu-card:hover{background:var(--bg3);}
+.gpu-card.is-deal:hover{background:#0d1f16;}
+
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;}
+.gpu-meta{flex:1;min-width:0;}
+.gpu-brand-line{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;}
+.gpu-name{font-size:16px;font-weight:700;line-height:1.25;letter-spacing:-.01em;}
+.card-acts{display:flex;gap:5px;flex-shrink:0;margin-left:8px;}
+.cbtn{background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 9px;border-radius:3px;transition:all .15s;font-family:var(--mono);white-space:nowrap;}
+.cbtn:hover{border-color:var(--border-b);color:var(--text);}
+.cbtn.del:hover{border-color:var(--red);color:var(--red);}
+
+/* BUY CHEAPEST */
+.buy-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;background:var(--accent);border:none;border-radius:5px;color:#000;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.04em;cursor:pointer;transition:opacity .18s,transform .1s;margin-bottom:.875rem;text-decoration:none;}
+.buy-btn:hover{opacity:.8;}
+.buy-btn:active{transform:scale(.985);}
+.buy-left{display:flex;align-items:center;gap:9px;}
+.buy-retailer-tag{font-size:9px;opacity:.6;letter-spacing:.1em;background:rgba(0,0,0,.18);padding:2px 7px;border-radius:2px;}
+.buy-brand-tag{font-size:9px;opacity:.7;letter-spacing:.06em;}
+.buy-price{font-size:16px;letter-spacing:-.02em;}
+.buy-cta{font-size:10px;opacity:.65;letter-spacing:.1em;}
+.no-listings{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:.875rem;padding:9px 12px;border:1px dashed var(--border-b);border-radius:4px;cursor:pointer;transition:border-color .2s;}
+.no-listings:hover{border-color:var(--accent);color:var(--accent);}
+
+/* LISTINGS TABLE ON CARD */
+.listings-section{margin-bottom:.75rem;}
+.retailer-block{margin-bottom:.5rem;}
+.r-header-row{display:flex;align-items:center;gap:6px;padding:3px 0 4px;border-bottom:1px solid var(--border);}
+.r-tag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;width:56px;flex-shrink:0;}
+.r-tag.amazon{color:var(--amazon);}
+.r-tag.newegg{color:var(--newegg);}
+.r-tag.bestbuy{color:var(--bestbuy);}
+.r-count{font-family:var(--mono);font-size:9px;color:var(--muted2);}
+.listing-row{display:flex;align-items:center;gap:6px;padding:4px 0 4px 4px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.listing-row:last-child{border-bottom:none;}
+.listing-brandname{font-family:var(--mono);font-size:11px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.listing-price{font-family:var(--mono);font-size:13px;font-weight:500;white-space:nowrap;}
+.listing-price.cheapest-overall{color:var(--accent);}
+.listing-goto{font-family:var(--mono);font-size:11px;color:var(--muted2);background:none;border:none;cursor:pointer;padding:1px 4px;transition:color .15s;text-decoration:none;flex-shrink:0;}
+.listing-goto:hover{color:var(--blue);}
+.listing-goto.has-link{color:var(--blue-d);}
+.r-empty{font-family:var(--mono);font-size:10px;color:var(--muted2);padding:4px 0 4px 4px;}
+
+.badge{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9px;letter-spacing:.07em;padding:3px 7px;border-radius:2px;font-weight:500;position:absolute;top:1.25rem;right:1.25rem;}
+.badge-deal{background:var(--accent-d);color:var(--accent);border:1px solid rgba(0,229,160,.28);}
+.badge-fair{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);}
+
+.divider{border:none;border-top:1px solid var(--border);margin:.75rem 0;}
+.alert-row{display:flex;align-items:center;gap:8px;}
+.alert-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s;}
+.alert-dot.on{background:var(--accent);box-shadow:0 0 6px var(--accent-g);animation:pulse 2s infinite;}
+.alert-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;white-space:nowrap;}
+.alert-inp{flex:1;background:var(--bg);border:1px solid var(--border-b);color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:4px;min-width:0;transition:border-color .2s;}
+.alert-inp:focus{outline:none;border-color:var(--accent);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ADD GPU PANEL */
+.add-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:2rem;}
+.section-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:1rem;}
+.add-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+.field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:110px;}
+.field label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;}
+.field input,.field select{background:var(--bg);border:1px solid var(--border-b);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:4px;transition:border-color .2s;width:100%;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+.field select option{background:var(--bg2);}
+.add-btn{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.07em;padding:8px 20px;background:var(--accent);color:#000;border:none;border-radius:4px;cursor:pointer;transition:opacity .2s;white-space:nowrap;height:36px;align-self:flex-end;}
+.add-btn:hover{opacity:.85;}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border-b);border-radius:10px;padding:0;width:100%;max-width:620px;margin:auto;}
+.modal-head{padding:1.5rem 1.75rem 1.25rem;border-bottom:1px solid var(--border);}
+.modal-head h2{font-size:17px;font-weight:700;margin-bottom:3px;letter-spacing:-.01em;}
+.modal-sub{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.65;}
+.modal-body{padding:1.25rem 1.75rem;}
+
+/* retailer section inside modal */
+.m-retailer-section{margin-bottom:1.5rem;}
+.m-retailer-header{display:flex;align-items:center;gap:8px;margin-bottom:.75rem;}
+.m-retailer-label{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;}
+.m-retailer-label.amazon{color:var(--amazon);}
+.m-retailer-label.newegg{color:var(--newegg);}
+.m-retailer-label.bestbuy{color:var(--bestbuy);}
+.m-listing-count{font-family:var(--mono);font-size:10px;color:var(--muted2);flex:1;}
+.add-listing-btn{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--accent-d);border:1px solid rgba(0,229,160,.25);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:.05em;transition:opacity .15s;white-space:nowrap;}
+.add-listing-btn:hover{opacity:.8;}
+
+/* each listing row in modal */
+.m-listing{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;align-items:center;margin-bottom:7px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:8px 10px;}
+.m-listing-inputs{grid-column:1/-1;display:grid;grid-template-columns:1fr 90px 32px;gap:8px;align-items:center;}
+.m-inp{background:var(--bg);border:1px solid var(--border-b);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 9px;border-radius:4px;width:100%;transition:border-color .2s;}
+.m-inp:focus{outline:none;border-color:var(--accent);}
+.m-inp.url-inp{font-size:11px;color:var(--muted);}
+.m-inp.url-inp:focus{color:var(--text);}
+.m-listing-brand-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+.m-listing-url-row{display:flex;gap:6px;align-items:center;}
+.m-del-btn{background:none;border:1px solid var(--border);color:var(--muted2);border-radius:4px;cursor:pointer;font-size:14px;padding:5px 8px;transition:all .15s;line-height:1;flex-shrink:0;}
+.m-del-btn:hover{border-color:var(--red);color:var(--red);}
+.m-open-btn{background:none;border:1px solid var(--border-b);color:var(--muted);border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px;padding:5px 8px;transition:all .15s;flex-shrink:0;}
+.m-open-btn:hover{border-color:var(--blue);color:var(--blue);}
+.m-no-listings{font-family:var(--mono);font-size:11px;color:var(--muted2);padding:8px 4px;}
+
+/* alert + footer */
+.modal-alert-section{padding:0 1.75rem 1.25rem;border-top:1px solid var(--border);padding-top:1.25rem;}
+.modal-alert-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;}
+.modal-footer{padding:1rem 1.75rem 1.5rem;display:flex;gap:10px;justify-content:flex-end;}
+.btn-save{font-family:var(--mono);font-size:12px;font-weight:500;padding:8px 22px;background:var(--accent);color:#000;border:none;border-radius:4px;cursor:pointer;letter-spacing:.06em;}
+.btn-save:hover{opacity:.85;}
+.btn-cancel{font-family:var(--mono);font-size:12px;padding:8px 16px;background:transparent;color:var(--muted);border:1px solid var(--border-b);border-radius:4px;cursor:pointer;}
+.btn-cancel:hover{color:var(--text);}
+
+/* ALERT LOG */
+.alerts-log{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.log-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.log-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;flex:1;}
+.clear-btn{font-family:var(--mono);font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;transition:color .15s;}
+.clear-btn:hover{color:var(--red);}
+.log-empty{padding:2rem 1.5rem;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;}
+.log-entry{padding:.75rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;animation:fadeIn .3s ease;flex-wrap:wrap;}
+.log-entry:last-child{border-bottom:none;}
+.log-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.log-time{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
+.log-msg{font-family:var(--mono);font-size:12px;flex:1;line-height:1.5;min-width:200px;}
+.log-buy{font-family:var(--mono);font-size:11px;color:#000;background:var(--accent);padding:4px 11px;border-radius:3px;text-decoration:none;white-space:nowrap;font-weight:500;}
+.log-buy:hover{opacity:.8;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+/* TOASTS */
+.toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:10px;z-index:9000;}
+.toast{background:var(--bg3);border:1px solid var(--border-b);padding:12px 16px;border-radius:6px;font-family:var(--mono);font-size:12px;max-width:340px;animation:slideIn .3s ease;box-shadow:0 8px 32px rgba(0,0,0,.65);}
+.toast.t-alert{border-left:3px solid var(--accent);}
+.toast.t-error{border-left:3px solid var(--red);}
+.toast.t-info{border-left:3px solid var(--blue);}
+.toast-title{font-weight:500;font-size:11px;letter-spacing:.06em;margin-bottom:4px;}
+.toast.t-alert .toast-title{color:var(--accent);}
+.toast.t-error .toast-title{color:var(--red);}
+.toast.t-info .toast-title{color:var(--blue);}
+.toast-body{color:var(--text);line-height:1.6;}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+
+@media(max-width:600px){
+  .header{padding:1.5rem 1rem 1rem;}
+  .main{padding:1rem;}
+  .gpu-grid{grid-template-columns:1fr;}
+  .modal-overlay{padding:.5rem;}
+  .modal-head,.modal-body,.modal-alert-section,.modal-footer{padding-left:1.25rem;padding-right:1.25rem;}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-tag">// price tracker v3.0</div>
+    <h1>GPU <span>Watch</span></h1>
+  </div>
+  <div class="header-right">
+    <span class="last-upd" id="last-upd">no prices saved yet</span>
+    <button class="hbtn" id="notif-btn" onclick="toggleNotif()">enable alerts</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <div class="info-banner">
+    <span class="info-icon">// HOW IT WORKS</span>
+    <div class="info-text">
+      Click <strong>edit listings</strong> on any card to add multiple listings per retailer — one per GPU variant (Sapphire, XFX, PowerColor, etc).
+      Enter the <strong>price + direct product URL</strong> for each. The <strong>Buy Cheapest →</strong> button always links to the single lowest-priced listing across all retailers and brands.
+      Set an <strong>alert threshold</strong> — get a notification the moment any listing drops below it.
+    </div>
+  </div>
+
+  <div class="gpu-grid" id="gpu-grid"></div>
+
+  <div class="add-panel">
+    <div class="section-title">// add gpu to watchlist</div>
+    <div class="add-form">
+      <div class="field" style="min-width:160px;flex:2;">
+        <label>GPU Name</label>
+        <input type="text" id="add-name" placeholder="e.g. Radeon RX 9070 XT" />
+      </div>
+      <div class="field" style="max-width:120px;">
+        <label>Chip Brand</label>
+        <select id="add-brand">
+          <option value="AMD">AMD</option>
+          <option value="NVIDIA">NVIDIA</option>
+          <option value="Intel">Intel</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:130px;">
+        <label>MSRP ($)</label>
+        <input type="number" id="add-msrp" placeholder="599" min="1" />
+      </div>
+      <div class="field" style="max-width:140px;">
+        <label>Alert Below ($)</label>
+        <input type="number" id="add-alert" placeholder="optional" min="1" />
+      </div>
+      <button class="add-btn" onclick="addGpu()">+ Add GPU</button>
+    </div>
+  </div>
+
+  <div class="alerts-log">
+    <div class="log-header">
+      <span class="log-title">// alert log</span>
+      <button class="clear-btn" onclick="clearLog()">clear all</button>
+    </div>
+    <div id="log-body">
+      <div class="log-empty">no alerts yet — add listings and set a price threshold on any card</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- EDIT LISTINGS MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal-inner">
+    <div class="modal-head">
+      <h2 id="modal-title">Edit Listings</h2>
+      <div class="modal-sub">Add one row per GPU variant (e.g. Sapphire Pulse, XFX Speedster). Paste the exact product URL so the Buy button links directly to that listing.</div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-alert-section">
+      <div class="modal-alert-label">Alert threshold — notify when any listing drops below</div>
+      <input class="m-inp" type="number" id="modal-alert" placeholder="e.g. 549" min="1" style="max-width:200px;" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveModal()">Save All</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+const RETAILERS = [
+  { key:'amazon',  label:'Amazon',   cls:'amazon',  search:'https://www.amazon.com/s?k=' },
+  { key:'newegg',  label:'Newegg',   cls:'newegg',  search:'https://www.newegg.com/p/pl?d=' },
+  { key:'bestbuy', label:'Best Buy', cls:'bestbuy', search:'https://www.bestbuy.com/site/searchpage.jsp?st=' },
+];
+
+// listing: { id, cardBrand, price, url }
+function blankRetailers() {
+  const o = {};
+  RETAILERS.forEach(r => { o[r.key] = []; });
+  return o;
+}
+
+let listingIdCounter = 1000;
+function newListing(cardBrand='', price=null, url='') {
+  return { lid: listingIdCounter++, cardBrand, price, url };
+}
+
+const DEFAULTS = [
+  { id:1, name:'Radeon RX 9070 XT', brand:'AMD',    msrp:599,  alert:null, retailers:blankRetailers() },
+  { id:2, name:'Radeon RX 9070',    brand:'AMD',    msrp:549,  alert:null, retailers:blankRetailers() },
+  { id:3, name:'RTX 5080',          brand:'NVIDIA', msrp:999,  alert:null, retailers:blankRetailers() },
+  { id:4, name:'RTX 5070 Ti',       brand:'NVIDIA', msrp:749,  alert:null, retailers:blankRetailers() },
+  { id:5, name:'RTX 4090',          brand:'NVIDIA', msrp:1999, alert:null, retailers:blankRetailers() },
+  { id:6, name:'RX 7900 XTX',       brand:'AMD',    msrp:999,  alert:null, retailers:blankRetailers() },
+  { id:7, name:'Arc B580',          brand:'Intel',  msrp:249,  alert:null, retailers:blankRetailers() },
+];
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem('gpuw3');
+    if (!raw) return DEFAULTS;
+    const parsed = JSON.parse(raw);
+    return parsed.map(g => ({ ...g, retailers: g.retailers || blankRetailers() }));
+  } catch(e) { return DEFAULTS; }
+}
+
+let gpus = loadData();
+let logs = [];
+try { logs = JSON.parse(localStorage.getItem('gpuw3_logs') || '[]'); } catch(e) {}
+let notifOn = false;
+let nextGpuId = Math.max(...gpus.map(g => g.id), 0) + 1;
+let editId = null;
+// modal in-memory state (before save)
+let modalState = {}; // { retailerKey: [ {lid, cardBrand, price, url}, ... ] }
+let alerted = new Set();
+
+function persist() {
+  localStorage.setItem('gpuw3', JSON.stringify(gpus));
+  localStorage.setItem('gpuw3_logs', JSON.stringify(logs.slice(0, 100)));
+}
+
+/* ── CHEAPEST across all retailers/listings ── */
+function cheapest(g) {
+  let best = null;
+  RETAILERS.forEach(r => {
+    (g.retailers[r.key] || []).forEach(l => {
+      if (l.price && l.price > 0) {
+        if (!best || l.price < best.price)
+          best = { price: l.price, retailerKey: r.key, retailerLabel: r.label, cardBrand: l.cardBrand, url: l.url, lid: l.lid };
+      }
+    });
+  });
+  return best;
+}
+
+function resolveUrl(g, retailerKey, listing) {
+  if (listing.url && listing.url.trim()) return listing.url.trim();
+  const r = RETAILERS.find(x => x.key === retailerKey);
+  const q = (listing.cardBrand ? listing.cardBrand + ' ' : '') + g.brand + ' ' + g.name;
+  return r.search + encodeURIComponent(q);
+}
+
+/* ── RENDER CARDS ── */
+function render() {
+  const grid = document.getElementById('gpu-grid');
+  if (!gpus.length) {
+    grid.innerHTML = '<div style="padding:2rem;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;background:var(--bg2);">no GPUs added yet — use the form below</div>';
+    return;
+  }
+  grid.innerHTML = gpus.map(renderCard).join('');
+}
+
+function renderCard(g) {
+  const best = cheapest(g);
+  const isDeal = best && g.alert != null && best.price <= g.alert;
+  const badge = isDeal
+    ? `<span class="badge badge-deal">DEAL</span>`
+    : `<span class="badge badge-fair">WATCHING</span>`;
+
+  // buy cheapest button
+  let buySection;
+  if (best) {
+    const url = resolveUrl(g, best.retailerKey, { url: best.url, cardBrand: best.cardBrand });
+    const brandTag = best.cardBrand ? `<span class="buy-brand-tag">${best.cardBrand.toUpperCase()}</span>` : '';
+    buySection = `<a class="buy-btn" href="${url}" target="_blank" rel="noopener">
+      <span class="buy-left">
+        <span class="buy-retailer-tag">${best.retailerLabel.toUpperCase()}</span>
+        ${brandTag}
+        <span class="buy-price">$${best.price.toLocaleString()}${isDeal ? ' — DEAL' : ''}</span>
+      </span>
+      <span class="buy-cta">BUY CHEAPEST →</span>
+    </a>`;
+  } else {
+    buySection = `<div class="no-listings" onclick="openModal(${g.id})">+ click "edit listings" to add prices &amp; links</div>`;
+  }
+
+  // listings per retailer
+  let allEmpty = true;
+  const listingBlocks = RETAILERS.map(r => {
+    const items = g.retailers[r.key] || [];
+    const withPrice = items.filter(l => l.price);
+    if (withPrice.length) allEmpty = false;
+    const rows = withPrice.map(l => {
+      const isBest = best && best.lid === l.lid;
+      const url = resolveUrl(g, r.key, l);
+      return `<div class="listing-row">
+        <span class="listing-brandname">${l.cardBrand || '<span style="color:var(--muted2)">—</span>'}</span>
+        <span class="listing-price${isBest?' cheapest-overall':''}">$${l.price.toLocaleString()}${isBest?' ✓':''}</span>
+        <a href="${url}" target="_blank" rel="noopener" class="listing-goto has-link" title="Open listing">↗</a>
+      </div>`;
+    }).join('');
+
+    if (!withPrice.length) return '';
+    return `<div class="retailer-block">
+      <div class="r-header-row">
+        <span class="r-tag ${r.cls}">${r.label}</span>
+        <span class="r-count">${withPrice.length} listing${withPrice.length>1?'s':''}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+
+  const alertVal = g.alert != null ? g.alert : '';
+  const dot = `<div class="alert-dot${isDeal?' on':''}"></div>`;
+
+  return `<div class="gpu-card${isDeal?' is-deal':''}" id="card-${g.id}">
+    ${badge}
+    <div class="card-header">
+      <div class="gpu-meta">
+        <div class="gpu-brand-line">${g.brand}${g.msrp?` · msrp $${g.msrp.toLocaleString()}`:''}${g.alert?` · alert $${g.alert.toLocaleString()}`:''}</div>
+        <div class="gpu-name">${g.name}</div>
+      </div>
+      <div class="card-acts">
+        <button class="cbtn" onclick="openModal(${g.id})">edit listings</button>
+        <button class="cbtn del" onclick="removeGpu(${g.id})">×</button>
+      </div>
+    </div>
+    ${buySection}
+    ${!allEmpty ? `<div class="listings-section">${listingBlocks}</div>` : ''}
+    <div class="divider"></div>
+    <div class="alert-row">
+      ${dot}
+      <span class="alert-label">ALERT IF BELOW</span>
+      <input class="alert-inp" type="number" placeholder="price threshold..." value="${alertVal}"
+        onchange="setAlert(${g.id},this.value)" onblur="setAlert(${g.id},this.value)" min="1" />
+    </div>
+  </div>`;
+}
+
+/* ── MODAL ── */
+function openModal(id) {
+  const g = gpus.find(x => x.id === id);
+  if (!g) return;
+  editId = id;
+
+  // Deep-copy listings into modal state
+  modalState = {};
+  RETAILERS.forEach(r => {
+    modalState[r.key] = (g.retailers[r.key] || []).map(l => ({ ...l }));
+    if (!modalState[r.key].length) {
+      // start with one blank row
+      modalState[r.key].push(newListing());
+    }
+  });
+
+  document.getElementById('modal-title').textContent = g.brand + ' ' + g.name + ' — Listings';
+  document.getElementById('modal-alert').value = g.alert != null ? g.alert : '';
+  renderModalBody();
+  document.getElementById('modal').classList.add('open');
+}
+
+function renderModalBody() {
+  const g = gpus.find(x => x.id === editId);
+  const body = document.getElementById('modal-body');
+  body.innerHTML = RETAILERS.map(r => {
+    const listings = modalState[r.key] || [];
+    const rows = listings.map((l, i) => `
+      <div class="m-listing" id="ml-${r.key}-${l.lid}">
+        <div class="m-listing-brand-row" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;">
+          <input class="m-inp" style="flex:1;" type="text" placeholder="Card brand / variant (e.g. Sapphire Pulse)"
+            value="${escHtml(l.cardBrand)}"
+            oninput="modalState['${r.key}'][${i}].cardBrand=this.value" />
+          <input class="m-inp" style="width:100px;" type="number" placeholder="$ price" min="1"
+            value="${l.price||''}"
+            oninput="modalState['${r.key}'][${i}].price=parseFloat(this.value)||null" />
+          <button class="m-del-btn" onclick="removeListing('${r.key}',${i})" title="Remove">×</button>
+        </div>
+        <div class="m-listing-url-row" style="grid-column:1/-1;display:flex;gap:8px;align-items:center;">
+          <input class="m-inp url-inp" style="flex:1;" type="url" placeholder="Product URL (paste from browser — leave blank for auto-search)"
+            value="${escHtml(l.url||'')}"
+            oninput="modalState['${r.key}'][${i}].url=this.value" />
+          <button class="m-open-btn" onclick="testModalLink('${r.key}',${i})" title="Test link">↗</button>
+        </div>
+      </div>`).join('');
+
+    return `<div class="m-retailer-section">
+      <div class="m-retailer-header">
+        <span class="m-retailer-label ${r.cls}">${r.label}</span>
+        <span class="m-listing-count">${listings.length} listing${listings.length!==1?'s':''}</span>
+        <button class="add-listing-btn" onclick="addListing('${r.key}')">+ add listing</button>
+      </div>
+      <div id="mls-${r.key}">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function addListing(retailerKey) {
+  modalState[retailerKey].push(newListing());
+  renderModalBody();
+}
+
+function removeListing(retailerKey, idx) {
+  modalState[retailerKey].splice(idx, 1);
+  if (!modalState[retailerKey].length) modalState[retailerKey].push(newListing());
+  renderModalBody();
+}
+
+function testModalLink(retailerKey, idx) {
+  const l = modalState[retailerKey][idx];
+  const g = gpus.find(x => x.id === editId);
+  const url = (l.url && l.url.trim()) ? l.url.trim() : (() => {
+    const r = RETAILERS.find(x => x.key === retailerKey);
+    const q = (l.cardBrand?l.cardBrand+' ':'') + g.brand + ' ' + g.name;
+    return r.search + encodeURIComponent(q);
+  })();
+  window.open(url, '_blank', 'noopener');
+}
+
+function saveModal() {
+  const g = gpus.find(x => x.id === editId);
+  if (!g) return;
+
+  // Collect from modalState, strip blank rows
+  RETAILERS.forEach(r => {
+    g.retailers[r.key] = modalState[r.key].filter(l => l.price || (l.url && l.url.trim()) || l.cardBrand.trim());
+  });
+
+  const av = parseFloat(document.getElementById('modal-alert').value);
+  const prev = g.alert;
+  g.alert = (!av || av <= 0) ? null : av;
+  if (g.alert !== prev) alerted.delete(g.id);
+
+  checkAlerts();
+  persist();
+  render();
+  renderLog();
+  closeModal();
+  document.getElementById('last-upd').textContent = 'updated ' + new Date().toLocaleTimeString();
+  toast('Saved', `${g.name} listings updated.`, 't-info');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editId = null; modalState = {};
+}
+
+function closeModalOutside(e) {
+  if (e.target.id === 'modal') closeModal();
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── ALERT / CRUD ── */
+function setAlert(id, val) {
+  const g = gpus.find(x => x.id === id);
+  if (!g) return;
+  const v = parseFloat(val);
+  const prev = g.alert;
+  g.alert = (!v || v <= 0) ? null : v;
+  if (g.alert !== prev) alerted.delete(id);
+  checkAlerts(); persist(); render(); renderLog();
+}
+
+function addGpu() {
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) { toast('Missing name', 'Enter a GPU name first.', 't-error'); return; }
+  const brand = document.getElementById('add-brand').value;
+  const msrp = parseFloat(document.getElementById('add-msrp').value) || null;
+  const alert = parseFloat(document.getElementById('add-alert').value) || null;
+  const g = { id: nextGpuId++, name, brand, msrp, alert, retailers: blankRetailers() };
+  gpus.push(g);
+  persist();
+  ['add-name','add-msrp','add-alert'].forEach(i => document.getElementById(i).value = '');
+  render();
+  toast('GPU added', `${brand} ${name} — click "edit listings" to add prices.`, 't-info');
+  openModal(g.id);
+}
+
+function removeGpu(id) {
+  gpus = gpus.filter(g => g.id !== id);
+  alerted.delete(id);
+  persist(); render();
+}
+
+function clearLog() { logs = []; persist(); renderLog(); }
+
+function checkAlerts() {
+  gpus.forEach(g => {
+    if (!g.alert) return;
+    const best = cheapest(g);
+    if (!best) return;
+    if (best.price <= g.alert && !alerted.has(g.id)) {
+      alerted.add(g.id);
+      fireAlert(g, best);
+    }
+    if (best.price > g.alert) alerted.delete(g.id);
+  });
+}
+
+function fireAlert(g, best) {
+  const time = new Date().toLocaleTimeString();
+  const url = resolveUrl(g, best.retailerKey, { url: best.url, cardBrand: best.cardBrand });
+  const brandStr = best.cardBrand ? ` (${best.cardBrand})` : '';
+  logs.unshift({ time, gpu: g.brand+' '+g.name, retailer: best.retailerLabel, cardBrand: best.cardBrand, price: best.price, threshold: g.alert, url });
+  renderLog(); persist();
+  toast('PRICE ALERT', `${g.name}${brandStr} → $${best.price.toLocaleString()} on ${best.retailerLabel} — below your $${g.alert.toLocaleString()} target!`, 't-alert');
+  if (notifOn && Notification.permission === 'granted') {
+    const n = new Notification('GPU Price Alert', {
+      body: `${g.brand} ${g.name}${brandStr}\n$${best.price.toLocaleString()} on ${best.retailerLabel}\nTarget: $${g.alert.toLocaleString()}`
+    });
+    n.onclick = () => window.open(url, '_blank');
+  }
+}
+
+function renderLog() {
+  const body = document.getElementById('log-body');
+  if (!logs.length) {
+    body.innerHTML = '<div class="log-empty">no alerts yet — add listings and set a price threshold on any card</div>';
+    return;
+  }
+  body.innerHTML = logs.map(l => {
+    const brandStr = l.cardBrand ? ` · ${l.cardBrand}` : '';
+    return `<div class="log-entry">
+      <div class="log-dot"></div>
+      <span class="log-time">${l.time}</span>
+      <span class="log-msg">${l.gpu}${brandStr} — ${l.retailer} at $${l.price.toLocaleString()} (alert $${l.threshold?.toLocaleString()})</span>
+      <a class="log-buy" href="${l.url}" target="_blank" rel="noopener">Buy →</a>
+    </div>`;
+  }).join('');
+}
+
+function toggleNotif() {
+  if (!('Notification' in window)) { toast('Not supported', 'Your browser does not support notifications.', 't-error'); return; }
+  if (notifOn) {
+    notifOn = false;
+    document.getElementById('notif-btn').textContent = 'enable alerts';
+    document.getElementById('notif-btn').classList.remove('on');
+    toast('Alerts off', 'Browser notifications disabled.', 't-info');
+    return;
+  }
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      notifOn = true;
+      document.getElementById('notif-btn').textContent = 'alerts on';
+      document.getElementById('notif-btn').classList.add('on');
+      toast('Alerts on', "You'll be notified when a listing hits your price target.", 't-alert');
+    } else {
+      toast('Permission denied', 'Allow notifications in browser settings to enable this.', 't-error');
+    }
+  });
+}
+
+function toast(title, msg, type='t-info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${msg}</div>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
+}
+
+render(); renderLog(); checkAlerts();
+</script>
+</body>
+</html>
